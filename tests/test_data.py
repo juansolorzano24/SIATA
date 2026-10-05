@@ -1,12 +1,21 @@
 import gzip
 import json
 import unittest
+import struct
+import zlib
 from datetime import datetime, timezone
 from unittest.mock import Mock, patch
 from urllib.error import HTTPError
 
 import server
 from wsgi import application
+
+
+def png_pixel(rgba=b"\x00\x00\x00\x00"):
+    def chunk(kind, content):
+        return struct.pack(">I", len(content)) + kind + content + struct.pack(">I", zlib.crc32(kind + content) & 0xffffffff)
+    return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", 1, 1, 8, 6, 0, 0, 0)) +
+            chunk(b"IDAT", zlib.compress(b"\x00" + rgba)) + chunk(b"IEND", b""))
 
 
 class DataTests(unittest.TestCase):
@@ -31,10 +40,10 @@ class DataTests(unittest.TestCase):
 
     def test_radar_keeps_original_bytes_and_matches_its_timestamp(self):
         metadata = {"available": True, "observed_at": "2026-10-05T00:49:00+00:00"}
-        original = b"\x89PNG\r\n\x1a\noriginal-pixels"
+        original = png_pixel()
         with patch.object(server, "get_radar", return_value=metadata), \
-             patch.object(server, "radar_cache", {"image_path": "/data/radar/10_DBZH/20261005/202610050049.png"}), \
-             patch.object(server, "read_operational", return_value=original):
+             patch.object(server, "datetime", self.radar_clock("2026-10-05T00:55:00+00:00")), \
+             patch.object(server, "radar_cache", {"frames": {metadata["observed_at"]: original}}):
             self.assertEqual(server.get_radar_image(metadata["observed_at"]), original)
             with self.assertRaises(ValueError):
                 server.get_radar_image("2026-10-05T00:40:00+00:00")
@@ -47,6 +56,8 @@ class DataTests(unittest.TestCase):
     def test_recent_original_radar_is_preferred(self):
         def source(base, path, **options):
             self.assertIn("/10_DBZH/", path)
+            if path.endswith('.png'):
+                return png_pixel()
             return b'<a href="202610051955.png">image</a>'
         with patch.object(server, "datetime", self.radar_clock()), \
              patch.object(server, "radar_cache", {}), \
@@ -57,13 +68,13 @@ class DataTests(unittest.TestCase):
         self.assertEqual(metadata["bounds"], server.RADAR_BOUNDS)
 
     def test_stopped_original_uses_recent_backup_with_its_own_bounds_and_pixels(self):
-        original = b"\x89PNG\r\n\x1a\nbackup-original-pixels"
+        original = png_pixel()
         def source(base, path, **options):
             if path.endswith('.png'):
                 self.assertEqual(path, "/data/radar/05_DBZH/20261005/202610051954.png")
                 return original
-            stamp = "202610051310" if "/10_DBZH/" in path else "202610051954"
-            return ("<a href='" + stamp + ".png'>image</a>").encode()
+            stamps = ["202610051310"] if "/10_DBZH/" in path else ["202610051949", "202610051954"]
+            return "".join("<a href='" + stamp + ".png'>image</a>" for stamp in stamps).encode()
         with patch.object(server, "datetime", self.radar_clock()), \
              patch.object(server, "radar_cache", {"image_path": "/old.png", "image": b"old-pixels"}), \
              patch.object(server, "read_operational", side_effect=source):
@@ -79,7 +90,9 @@ class DataTests(unittest.TestCase):
         def source(base, path, **options):
             if "/10_DBZH/" in path:
                 raise TimeoutError("original unavailable")
-            return b'<a href="202610051954.png">image</a>'
+            if path.endswith('.png'):
+                return png_pixel()
+            return b'<a href="202610051949.png">image</a><a href="202610051954.png">image</a>'
         with patch.object(server, "datetime", self.radar_clock()), \
              patch.object(server, "radar_cache", {}), \
              patch.object(server, "read_operational", side_effect=source):
@@ -102,6 +115,8 @@ class DataTests(unittest.TestCase):
     def test_radar_before_midnight_remains_available_on_the_next_utc_day(self):
         def source(base, path, **options):
             self.assertIn("/10_DBZH/", path)
+            if path.endswith('.png'):
+                return png_pixel()
             if path.endswith("20261006/"):
                 raise HTTPError(base + path, 404, "not created yet", {}, None)
             return b'<a href="202610052357.png">image</a>'
@@ -113,12 +128,66 @@ class DataTests(unittest.TestCase):
         self.assertEqual(metadata["age_minutes"], 7)
 
     def test_non_image_response_is_rejected(self):
-        metadata = {"available": True, "observed_at": "2026-10-05T19:54:00+00:00"}
-        with patch.object(server, "get_radar", return_value=metadata), \
-             patch.object(server, "radar_cache", {"image_path": "/data/radar/05_DBZH/20261005/202610051954.png"}), \
-             patch.object(server, "read_operational", return_value=b"<html>unavailable</html>"):
-            with self.assertRaisesRegex(ValueError, "imagen PNG"):
-                server.get_radar_image(metadata["observed_at"])
+        with self.assertRaisesRegex(ValueError, "imagen PNG"):
+            server.checked_radar_png(b"<html>unavailable</html>")
+
+    def test_truncated_png_cannot_be_announced_as_available(self):
+        with self.assertRaisesRegex(ValueError, "PNG incompleta"):
+            server.checked_radar_png(png_pixel()[:-12])
+        self.assertEqual(server.checked_radar_png(png_pixel()), png_pixel())
+
+    def test_backup_skips_the_isolated_2007_scan_without_filtering_pixels(self):
+        for last, expected in [("202610052007", "2026-10-05T20:05:00+00:00"),
+                               ("202610052010", "2026-10-05T20:10:00+00:00")]:
+            def source(base, path, **options):
+                if path.endswith('.png'):
+                    return png_pixel()  # Una imagen sin ecos también es válida.
+                stamps = ["202610051310"] if "/10_DBZH/" in path else [
+                    "202610051954", "202610051959", "202610052005", "202610052007"]
+                if last == "202610052010" and "/05_DBZH/" in path:
+                    stamps.append(last)
+                return "".join('<a href="' + stamp + '.png">image</a>' for stamp in stamps).encode()
+            with self.subTest(last=last), \
+                 patch.object(server, "datetime", self.radar_clock("2026-10-05T20:12:00+00:00")), \
+                 patch.object(server, "radar_cache", {}), \
+                 patch.object(server, "read_operational", side_effect=source):
+                metadata = server.get_radar()
+                self.assertEqual(metadata["observed_at"], expected)
+                self.assertEqual(server.get_radar_image(expected), png_pixel())
+
+    def test_an_update_does_not_break_download_of_previous_recent_scan(self):
+        clock = self.radar_clock("2026-10-05T20:11:00+00:00")
+        scan = ["202610052009"]
+        def source(base, path, **options):
+            return png_pixel() if path.endswith('.png') else ('<a href="' + scan[0] + '.png">image</a>').encode()
+        with patch.object(server, "datetime", clock), patch.object(server, "radar_cache", {}), \
+             patch.object(server, "read_operational", side_effect=source):
+            previous = server.get_radar()
+            clock.now.return_value = datetime.fromisoformat("2026-10-05T20:16:00+00:00")
+            scan[0] = "202610052014"
+            current = server.get_radar(True)
+            self.assertNotEqual(current["observed_at"], previous["observed_at"])
+            self.assertEqual(server.get_radar_image(previous["observed_at"]), png_pixel())
+
+    def test_transient_failure_preserves_recent_scan_but_never_an_expired_one(self):
+        clock = self.radar_clock("2026-10-05T20:11:00+00:00")
+        def source(base, path, **options):
+            return png_pixel() if path.endswith('.png') else b'<a href="202610052009.png">image</a>'
+        with patch.object(server, "datetime", clock), patch.object(server, "radar_cache", {}), \
+             patch.object(server, "read_operational", side_effect=source) as fetch:
+            previous = server.get_radar()
+            fetch.side_effect = TimeoutError("SIATA unavailable")
+            clock.now.return_value = datetime.fromisoformat("2026-10-05T20:16:00+00:00")
+            current = server.get_radar(True)
+            self.assertTrue(current["available"])
+            self.assertEqual(current["observed_at"], previous["observed_at"])
+            self.assertEqual(current["age_minutes"], 7)
+            self.assertEqual(server.get_radar_image(current["observed_at"]), png_pixel())
+            clock.now.return_value = datetime.fromisoformat("2026-10-05T20:40:00+00:00")
+            with self.assertRaises(TimeoutError):
+                server.get_radar(True)
+            with self.assertRaises(TimeoutError):
+                server.get_radar_image(current["observed_at"])
 
     def test_radar_bounds_include_requested_sectors(self):
         (south, west), (north, east) = server.RADAR_BOUNDS
