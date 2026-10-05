@@ -143,6 +143,12 @@ h1 { margin: 0; font-size: 23px; line-height: 1.15; letter-spacing: -.025em; }
 .reading strong { color: #134d65; font-size: 20px; font-weight: 700; margin-right: 5px; }
 .source-link { display: inline-flex; align-items: center; gap: 6px; margin-top: 15px; font-size: 11px; font-weight: 700; text-decoration: none; }
 .source-link:hover { text-decoration: underline; }
+.sidebar-footer .source-link { margin-top: 8px; }
+.privacy-dialog { max-height: calc(100dvh - 32px); overflow-y: auto; }
+.privacy-status { padding: 10px 12px; border-radius: 8px; background: #eef7fa; }
+.privacy-preference { min-height: 44px; padding: 10px 13px; border: 1px solid #b7cdd7; border-radius: 8px; color: #23536a; background: #fff; font-weight: 650; }
+.privacy-preference:disabled { opacity: .6; cursor: default; }
+.privacy-dialog .privacy-note { font-size: 11px; line-height: 1.5; }
 .file-link { display: block; margin: 8px 0; font-size: 11px; overflow-wrap: anywhere; }
 .mobile-only, .mobile-nav, .panel-backdrop { display: none; }
 .header-button { min-height: 38px; border: 1px solid #47718a; border-radius: 8px; color: #e6faff; background: #174159; padding: 0 12px; font-size: 12px; }

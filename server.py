@@ -21,6 +21,7 @@ import unicodedata
 import mimetypes
 import gzip
 from functools import lru_cache
+from analytics import public_config, UMAMI_ORIGIN, UMAMI_COLLECTOR_ORIGIN
 
 
 ROOT = Path(__file__).resolve().parent
@@ -485,13 +486,22 @@ def get_series(file_id):
     return result
 
 
-STATIC_FILES = {"index.html", "scripts.js", "styles.css", "coverage.js", "pwa.js", "manifest.webmanifest", "service-worker.js",
+STATIC_FILES = {"index.html", "scripts.js", "styles.css", "coverage.js", "pwa.js", "analytics.js", "manifest.webmanifest", "service-worker.js",
                 "data/siata_catalog.json", "data/forecast_zones.geojson", "data/medellin_sectors.geojson"}
 SECURITY_HEADERS = {
     "X-Content-Type-Options": "nosniff",
     "Referrer-Policy": "strict-origin-when-cross-origin",
     "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'self'",
 }
+
+
+def security_headers():
+    headers = dict(SECURITY_HEADERS)
+    if public_config()["enabled"]:
+        headers["Content-Security-Policy"] = headers["Content-Security-Policy"].replace(
+            "script-src 'self'", "script-src 'self' " + UMAMI_ORIGIN).replace(
+            "connect-src 'self'", "connect-src 'self' " + UMAMI_COLLECTOR_ORIGIN)
+    return headers
 
 
 def response_for_url(url, accept_encoding=""):
@@ -503,6 +513,8 @@ def response_for_url(url, accept_encoding=""):
         force = query.get("refresh") == ["1"]
         if path == "/healthz":
             payload = {"status": "ok"}
+        elif path == "/api/analytics/config":
+            payload = public_config()
         elif path == "/api/radar/image":
             payload, mime = get_radar_image(query.get("stamp", [None])[0]), "image/png"
         elif path == "/api/radar":
@@ -537,7 +549,7 @@ def response_for_url(url, accept_encoding=""):
         print("Error de fuente SIATA:", repr(exc), file=sys.stderr)
         status, payload = 502, {"error": "SIATA no respondió a esta consulta. Intenta actualizar en unos minutos."}
     body = payload if isinstance(payload, bytes) else json.dumps(payload, ensure_ascii=False).encode("utf-8")
-    headers = {"Content-Type": mime, "Cache-Control": cache, **SECURITY_HEADERS}
+    headers = {"Content-Type": mime, "Cache-Control": cache, **security_headers()}
     if len(body) > 1024 and "gzip" in accept_encoding and not mime.startswith("image/"):
         body = gzip.compress(body)
         headers.update({"Content-Encoding": "gzip", "Vary": "Accept-Encoding"})

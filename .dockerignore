@@ -9,6 +9,8 @@
 !styles.css
 !coverage.js
 !pwa.js
+!analytics.js
+!analytics.py
 !manifest.webmanifest
 !service-worker.js
 !vendor/

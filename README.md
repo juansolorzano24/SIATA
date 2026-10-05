@@ -1,5 +1,7 @@
 # Lluvia Aburrá · Geovisor con datos SIATA
 
+Las estadísticas privadas de visitas se integran con Umami Cloud. Ver [ESTADISTICAS.md](ESTADISTICAS.md) para activar la medición y consultar visitantes y procedencia de las últimas 24 horas. El sitio incluye un aviso de privacidad y exclusión voluntaria; no se recuperan visitas anteriores a la activación.
+
 Geovisor independiente para computador y celular. Reúne radar, lluvia medida, pronóstico por zonas, estaciones y series históricas del Valle de Aburrá. Los datos originales pertenecen a AMVA–SIATA.
 
 ## Abrir en este computador

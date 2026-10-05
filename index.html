@@ -12,7 +12,7 @@
     <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
     <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-    <link rel="stylesheet" href="styles.css?v=14">
+    <link rel="stylesheet" href="styles.css?v=15">
 </head>
 <body>
     <header class="topbar">
@@ -69,6 +69,7 @@
                 <strong>Fuente directa</strong>
                 <span>Datos originales: AMVA–SIATA, <a href="https://siata.gov.co/portalWeb" target="_blank" rel="noopener noreferrer">siata.gov.co</a> y <a href="https://datos.siata.gov.co/" target="_blank" rel="noopener noreferrer">datos.siata.gov.co</a>. Visualización independiente. <a href="https://datos.siata.gov.co/dataset.xhtml?persistentId=doi%3A10.83041%2F1CJGDM" target="_blank" rel="noopener noreferrer">Términos de uso</a>.</span>
                 <button id="installHelp" class="source-link" type="button">Usar como app en el celular</button>
+                <button id="privacyHelp" class="source-link" type="button">Privacidad y estadísticas</button>
             </div>
         </aside>
 
@@ -123,8 +124,19 @@
         <form method="dialog"><button type="submit">Entendido</button></form>
     </dialog>
     <script src="vendor/leaflet/leaflet.js"></script>
-    <script src="coverage.js?v=14"></script>
-    <script src="scripts.js?v=14"></script>
-    <script src="pwa.js?v=14"></script>
+    <dialog id="privacyDialog" class="install-dialog privacy-dialog" aria-labelledby="privacyTitle">
+        <h2 id="privacyTitle">Privacidad y estadísticas</h2>
+        <p>Si están activadas, usamos <a href="https://umami.is/" target="_blank" rel="noopener noreferrer">Umami</a> para conocer las visitas al geovisor: fecha, página, procedencia del enlace, navegador, idioma, tipo de dispositivo, tamaño de pantalla y país o ciudad aproximados.</p>
+        <p>La ubicación se estima por la conexión a Internet, sin pedir tu ubicación GPS. Umami procesa la dirección IP para estimar la procedencia y distinguir visitas; según su documentación, no la almacena ni utiliza cookies de seguimiento.</p>
+        <p>Solo registramos la apertura de la página. No enviamos tus búsquedas, coordenadas consultadas ni estaciones seleccionadas. Los informes permanecen en el panel privado del administrador; los visitantes son una estimación, no un conteo exacto de personas.</p>
+        <p id="analyticsStatus" class="privacy-status" role="status">Consultando disponibilidad de estadísticas…</p>
+        <button id="analyticsPreference" class="privacy-preference" type="button">No participar en las estadísticas</button>
+        <p class="privacy-note">La preferencia se guarda solo en este navegador. También respetamos sus señales de «No rastrear» y de control global de privacidad. <a href="https://umami.is/privacy" target="_blank" rel="noopener noreferrer">Privacidad de Umami ↗</a></p>
+        <form method="dialog"><button type="submit">Cerrar</button></form>
+    </dialog>
+    <script src="coverage.js?v=15"></script>
+    <script src="scripts.js?v=15"></script>
+    <script src="pwa.js?v=15"></script>
+    <script src="analytics.js?v=15"></script>
 </body>
 </html>

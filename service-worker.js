@@ -1,7 +1,7 @@
 // El mapa puede abrirse sin conexión; los datos meteorológicos requieren la fuente en línea.
-const CACHE = 'aburra-shell-v14';
+const CACHE = 'aburra-shell-v15';
 const SHELL = [
-  '/', '/index.html', '/styles.css?v=14', '/scripts.js?v=14', '/coverage.js?v=14', '/pwa.js?v=14',
+  '/', '/index.html', '/styles.css?v=15', '/scripts.js?v=15', '/coverage.js?v=15', '/pwa.js?v=15', '/analytics.js?v=15',
   '/manifest.webmanifest', '/vendor/leaflet/leaflet.js', '/vendor/leaflet/leaflet.css',
   '/vendor/leaflet/images/layers.png', '/vendor/leaflet/images/layers-2x.png',
   '/vendor/leaflet/images/marker-icon.png', '/vendor/leaflet/images/marker-icon-2x.png',

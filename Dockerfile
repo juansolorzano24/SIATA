@@ -3,7 +3,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PORT=8000
 WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt && useradd --create-home app
-COPY server.py serve.py wsgi.py index.html scripts.js styles.css coverage.js pwa.js manifest.webmanifest service-worker.js ./
+COPY server.py serve.py wsgi.py analytics.py index.html scripts.js styles.css coverage.js pwa.js analytics.js manifest.webmanifest service-worker.js ./
 COPY vendor ./vendor
 COPY icons ./icons
 COPY data/siata_catalog.json data/forecast_zones.geojson data/medellin_sectors.geojson ./data/
