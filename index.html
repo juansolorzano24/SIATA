@@ -12,7 +12,7 @@
     <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
     <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-    <link rel="stylesheet" href="styles.css?v=11">
+    <link rel="stylesheet" href="styles.css?v=13">
 </head>
 <body>
     <header class="topbar">
@@ -61,6 +61,7 @@
                 <input id="search" type="search" placeholder="Buscar estación o municipio" aria-label="Buscar estación o municipio">
             </div>
             <div class="section-title"><span>Redes de estaciones</span><span id="categoryCount">—</span></div>
+            <p class="layers-hint">Activa «Pluviómetros SIATA» u «Otras estaciones SIATA» en el control de capas del mapa para mostrar sus puntos.</p>
             <div id="categories" class="categories" aria-label="Filtrar por red"></div>
             <div class="section-title list-title"><span id="resultTitle">Estaciones</span><span id="resultCount">—</span></div>
             <div id="stationList" class="station-list"><div class="list-message">Cargando catálogo de SIATA…</div></div>
@@ -79,6 +80,23 @@
                 <button id="homeView" class="toolbar-button" type="button" title="Ver todo el Valle de Aburrá" aria-label="Ver todo el Valle de Aburrá">⌂</button>
             </div>
             <button id="weatherSummary" class="weather-summary" type="button">Consultando lluvia…</button>
+            <section id="radarLegend" class="radar-legend" aria-label="Leyenda del radar de lluvia SIATA">
+                <div class="radar-legend-title"><strong>Radar de lluvia SIATA</strong><span>Reflectividad · dBZ</span></div>
+                <div class="radar-color-scale" role="img" aria-label="Paleta de reflectividad: celeste, azul, verde, amarillo, naranja, rojo, morado, rosado y blanco; de 0 a 80 dBZ"></div>
+                <div class="radar-scale-ticks" aria-hidden="true"><span>0</span><span>20</span><span>40</span><span>60</span><span>80</span></div>
+                <div class="radar-scale-classes"><span>Baja</span><span>Moderada</span><span>Alta</span><span>Muy alta</span></div>
+                <details class="radar-legend-details">
+                    <summary>Cómo interpretar los colores</summary>
+                    <dl>
+                        <div><dt>0–20 dBZ</dt><dd>Intensidad baja</dd></div>
+                        <div><dt>20–40 dBZ</dt><dd>Intensidad moderada</dd></div>
+                        <div><dt>40–60 dBZ</dt><dd>Intensidad alta</dd></div>
+                        <div><dt>60–80 dBZ</dt><dd>Muy alta; posible granizo</dd></div>
+                    </dl>
+                    <p>Los colores muestran la fuerza del eco del radar. No equivalen a porcentajes de probabilidad ni a milímetros medidos en el suelo. El color por sí solo no confirma granizo; una zona sin color no confirma ausencia de lluvia.</p>
+                    <a href="https://siata.gov.co/siata_nuevo/application/assets/images/AreaMetropolitanaRadar_DBZH.png?v=0.0.1" target="_blank" rel="noopener noreferrer">Ver leyenda oficial de SIATA ↗</a>
+                </details>
+            </section>
             <div class="map-bottom">
                 <div class="map-caption"><strong id="mapCount">—</strong> estaciones visibles <span>·</span> <span id="liveCount">Consultando lecturas</span></div>
                 <div id="coordinates" class="coordinates">Lat — · Lon —</div>
@@ -102,8 +120,8 @@
         <form method="dialog"><button type="submit">Entendido</button></form>
     </dialog>
     <script src="vendor/leaflet/leaflet.js"></script>
-    <script src="coverage.js?v=11"></script>
-    <script src="scripts.js?v=11"></script>
-    <script src="pwa.js?v=11"></script>
+    <script src="coverage.js?v=13"></script>
+    <script src="scripts.js?v=13"></script>
+    <script src="pwa.js?v=13"></script>
 </body>
 </html>

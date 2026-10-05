@@ -22,10 +22,10 @@ const satelite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/servic
 });
 
 const stationLayer = L.layerGroup();
-const selectedLayer = L.layerGroup().addTo(map);
-const radarLayer = L.layerGroup();
+const selectedLayer = L.layerGroup();
+const radarLayer = L.layerGroup().addTo(map);
 const radarImageLayer = L.layerGroup().addTo(radarLayer);
-const rainGaugeLayer = L.layerGroup().addTo(radarLayer);
+const rainGaugeLayer = L.layerGroup();
 const forecastLayer = L.layerGroup();
 const sectorsLayer = L.layerGroup();
 map.createPane('forecastPane');
@@ -33,7 +33,8 @@ map.getPane('forecastPane').style.zIndex = 350;
 L.control.layers(
   { 'Calles OpenStreetMap': calles, 'Satélite Esri': satelite },
   { 'Radar de lluvia SIATA': radarLayer, 'Probabilidad de lluvia SIATA': forecastLayer,
-    'Estaciones SIATA': stationLayer, 'Comunas y corregimientos': sectorsLayer },
+    'Pluviómetros SIATA': rainGaugeLayer, 'Otras estaciones SIATA': stationLayer,
+    'Comunas y corregimientos': sectorsLayer },
   { position: 'topright' }
 ).addTo(map);
 
@@ -170,7 +171,6 @@ function renderCategories() {
       '</span><span class="count">' + count + '</span>';
     button.addEventListener('click', function () {
       category = key;
-      if (!map.hasLayer(stationLayer)) map.addLayer(stationLayer);
       renderCategories();
       renderResults();
     });
@@ -206,7 +206,7 @@ function renderMarkers(list) {
   stationLayer.clearLayers();
   markers = new Map();
   list.forEach(function (record) {
-    if (record.lat == null || record.lon == null) return;
+    if (record.lat == null || record.lon == null || record.category === 'Pluviometrica') return;
     const info = network(record);
     const active = selected && selected.id === record.id;
     const marker = L.circleMarker([record.lat, record.lon], {
@@ -241,7 +241,7 @@ function formatStamp(value) {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? String(value) : new Intl.DateTimeFormat('es-CO', {
     timeZone: 'America/Bogota', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
-  }).format(date) + ' · Bogotá';
+  }).format(date) + ' · hora de Medellín';
 }
 
 function observationMarkup(observation) {
@@ -264,6 +264,7 @@ function selectRecord(record) {
       radius: 9, color: '#fff', weight: 3, fillColor: network(record).color, fillOpacity: 1
     }).bindTooltip(record.name, { direction: 'top' }).addTo(selectedLayer);
   }
+  syncSelectedMarker();
   detailRequest += 1;
   currentSeries = null;
   currentColumn = null;
@@ -311,7 +312,7 @@ async function fetchJson(url) {
   return data;
 }
 
-function bogotaDate() {
+function medellinDate() {
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit',
     hour: '2-digit', hourCycle: 'h23'
@@ -324,6 +325,16 @@ function weatherLegendItems(items) {
   weatherLegend.innerHTML = items.map(function ([label, color]) {
     return '<span class="legend-item"><i class="legend-swatch" style="--swatch:' + color + '"></i>' + label + '</span>';
   }).join('');
+}
+
+function syncSelectedMarker() {
+  const owner = selected && (selected.category === 'Pluviometrica' ? rainGaugeLayer : stationLayer);
+  if (owner && map.hasLayer(owner)) map.addLayer(selectedLayer);
+  else map.removeLayer(selectedLayer);
+}
+
+function syncRadarLegend() {
+  document.getElementById('radarLegend').hidden = !map.hasLayer(radarLayer);
 }
 
 function setWeatherMode(mode) {
@@ -391,8 +402,8 @@ function renderRainGauges() {
 
 function updateMapCount() {
   const visible = new Set();
-  if (map.hasLayer(stationLayer)) filteredRecords().filter(function (record) { return record.lat != null; }).forEach(function (record) { visible.add(record.id); });
-  if (map.hasLayer(radarLayer)) records.filter(function (record) { return record.category === 'Pluviometrica' && record.lat != null; }).forEach(function (record) { visible.add(record.id); });
+  if (map.hasLayer(stationLayer)) filteredRecords().filter(function (record) { return record.lat != null && record.category !== 'Pluviometrica'; }).forEach(function (record) { visible.add(record.id); });
+  if (map.hasLayer(rainGaugeLayer)) records.filter(function (record) { return record.category === 'Pluviometrica' && record.lat != null; }).forEach(function (record) { visible.add(record.id); });
   document.getElementById('mapCount').textContent = visible.size.toLocaleString('es-CO');
 }
 
@@ -401,18 +412,22 @@ function radarMessage(imageError) {
   const rain = records.filter(function (record) { return record.category === 'Pluviometrica'; });
   const recent = rain.filter(function (record) { return recentObservation(record.observation) && rainReading(record) !== null; });
   const wet = recent.filter(function (record) { return rainReading(record) > 0; });
+  const showGauges = map.hasLayer(rainGaugeLayer);
   const available = radarData && radarData.available && Date.now() - new Date(radarData.observed_at).getTime() <= 30 * 60 * 1000;
-  weatherSummary.textContent = available && !imageError ? 'Radar · ' + formatStamp(radarData.observed_at) + ' · ' +
-    (observationsLoaded ? wet.length + ' pluviómetros con lluvia' : 'Consultando pluviómetros…') :
-    'Radar no disponible · ' + recent.length + ' pluviómetros recientes';
+  weatherSummary.textContent = available && !imageError ? 'Radar · ' + formatStamp(radarData.observed_at) +
+    (showGauges && observationsLoaded ? ' · ' + wet.length + ' pluviómetros con lluvia' : '') :
+    'Radar no disponible' + (showGauges ? ' · ' + recent.length + ' pluviómetros recientes' : '');
   weatherInfo.innerHTML = (available && !imageError ? 'Barrido completo: ' + escapeHtml(formatStamp(radarData.observed_at)) +
     '. Radar sobre toda Medellín, sin recortes por comuna. Los colores muestran ecos del radar; las zonas sin color no confirman ausencia de lluvia. ' +
     '<a href="' + escapeHtml(radarData.source) + '" target="_blank" rel="noopener noreferrer">Imagen original ↗</a>' :
     (imageError ? 'No fue posible cargar el barrido de SIATA.' : 'SIATA no entregó un barrido reciente.')) +
-    '<br>' + (observationsLoaded ? recent.length + ' pluviómetros con lectura reciente; ' + wet.length + (wet.length === 1 ? ' registra' : ' registran') + ' lluvia en 15 min. ' : 'Consultando los pluviómetros… ') +
-    'Los puntos blancos registran 0 mm; los grises no tienen una lectura reciente confirmada. Toca un punto para ver su fecha.';
-  weatherLegendItems([['Radar: menor reflectividad', '#3464dc'], ['Mayor reflectividad', '#db445d'],
-    ['Pluviómetro con lluvia', '#006ed5'], ['0 mm / 15 min', '#ffffff'], ['Sin lectura reciente', '#7a8a95']]);
+    '<br>' + (showGauges ? (observationsLoaded ? recent.length + ' pluviómetros con lectura reciente; ' + wet.length +
+      (wet.length === 1 ? ' registra' : ' registran') + ' lluvia en 15 min. ' : 'Consultando los pluviómetros… ') +
+      'Toca un pluviómetro para ver su lectura y fecha.' : 'Activa «Pluviómetros SIATA» en Capas para ver los puntos.');
+  weatherLegendItems(showGauges ? [
+    ['Pluviómetro con lluvia', '#006ed5'], ['0 mm / 15 min', '#ffffff'], ['Sin lectura reciente', '#7a8a95']
+  ] : []);
+  syncRadarLegend();
 }
 
 function renderRadar() {
@@ -456,7 +471,7 @@ function forecastValue(zone) {
 function renderForecast() {
   if (weatherMode !== 'forecast' || !forecastData) return;
   forecastLayer.clearLayers();
-  const today = bogotaDate().date;
+  const today = medellinDate().date;
   if (!forecastDate.value || forecastDate.value < today) {
     weatherInfo.textContent = 'SIATA no tiene un pronóstico vigente para la fecha seleccionada.';
     weatherLegend.replaceChildren();
@@ -489,7 +504,7 @@ function renderForecast() {
   const allLow = zones.length > 0 && countHigh === 0 && countMedium === 0;
   weatherInfo.innerHTML = (allLow ? 'SIATA indica probabilidad BAJA en todas las zonas para este periodo. Prueba otra fecha o periodo para ver el pronóstico futuro. ' :
     'Pronóstico: ' + countHigh + (countHigh === 1 ? ' zona' : ' zonas') + ' en ALTA y ' + countMedium + ' en MEDIA. ') +
-    'Actualización más antigua: ' + escapeHtml(update) + ' (Bogotá). Cobertura: polígonos oficiales de las zonas de pronóstico. ' +
+    'Actualización más antigua: ' + escapeHtml(update) + ' (hora de Medellín). Cobertura: polígonos oficiales de las zonas de pronóstico. ' +
     '<a href="https://siata.gov.co/portalWeb" target="_blank" rel="noopener noreferrer">Pronóstico SIATA ↗</a>';
   weatherLegendItems([['Baja', WEATHER_COLORS.BAJA], ['Media', WEATHER_COLORS.MEDIA], ['Alta', WEATHER_COLORS.ALTA]]);
   weatherSummary.textContent = 'Pronóstico · ' + forecastDate.value + ' · ' + forecastPeriod.value + ' · ' + countHigh + ' zonas en alta';
@@ -519,7 +534,7 @@ async function loadRadar(force) {
 async function loadForecast(force) {
   try {
     forecastData = await fetchJson('/api/forecast' + (force ? '?refresh=1' : ''));
-    const today = bogotaDate();
+    const today = medellinDate();
     const dates = [...new Set(forecastData.zones.flatMap(function (zone) {
       return zone.days.map(function (day) { return day.date; });
     }))].filter(function (date) { return date >= today.date; }).sort();
@@ -575,13 +590,21 @@ forecastButton.addEventListener('click', function () { setWeatherMode('forecast'
 forecastDate.addEventListener('change', renderForecast);
 forecastPeriod.addEventListener('change', renderForecast);
 map.on('overlayadd', function (event) {
+  if (event.layer === radarLayer) layerWanted.radar = true;
+  if (event.layer === forecastLayer) layerWanted.forecast = true;
   if (event.layer === radarLayer && weatherMode !== 'radar') setWeatherMode('radar');
   if (event.layer === forecastLayer && weatherMode !== 'forecast') setWeatherMode('forecast');
+  if (event.layer === rainGaugeLayer) radarMessage();
+  syncSelectedMarker();
+  syncRadarLegend();
   updateMapCount();
 });
 map.on('overlayremove', function (event) {
   if (event.layer === radarLayer) layerWanted.radar = false;
   if (event.layer === forecastLayer) layerWanted.forecast = false;
+  if (event.layer === rainGaugeLayer) radarMessage();
+  syncSelectedMarker();
+  syncRadarLegend();
   updateMapCount();
 });
 
@@ -829,7 +852,6 @@ document.getElementById('panelBackdrop').addEventListener('click', function () {
 document.getElementById('mobileRadar').addEventListener('click', function () { setWeatherMode('radar'); setPanel(false); });
 document.getElementById('mobileForecast').addEventListener('click', function () { setWeatherMode('forecast'); setPanel(false); });
 document.getElementById('mobileStations').addEventListener('click', function () {
-  map.addLayer(stationLayer);
   setPanel(true);
   searchInput.focus();
 });
