@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+.runtime/
+.venv/
+*.log
+data/*.tmp
+# Archivos de las capas retiradas y paquetes locales de publicación.
+data/*
+!data/siata_catalog.json
+!data/forecast_zones.geojson
+!data/medellin_sectors.geojson
+publicar-render/
+dist/
+.env
+.env.*

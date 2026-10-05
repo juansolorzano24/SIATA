@@ -1,0 +1,14 @@
+# Render Blueprint: un servicio web gratuito para la web y la app móvil.
+services:
+  - type: web
+    name: lluvia-aburra
+    runtime: python
+    plan: free
+    region: virginia
+    buildCommand: python -m pip install -r requirements.txt
+    startCommand: python serve.py
+    healthCheckPath: /healthz
+    autoDeployTrigger: commit
+    envVars:
+      - key: PYTHONUNBUFFERED
+        value: "1"

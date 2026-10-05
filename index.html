@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#09283e">
+    <meta name="description" content="Radar de lluvia, pronóstico por zonas y estaciones del Valle de Aburrá. Datos públicos AMVA–SIATA en un geovisor independiente.">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <title>Lluvia Aburrá · Geovisor con datos SIATA</title>
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+    <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+    <link rel="stylesheet" href="styles.css?v=11">
+</head>
+<body>
+    <header class="topbar">
+        <div class="brand">
+            <div class="brand-symbol" aria-hidden="true"><span></span><span></span><span></span></div>
+            <div><strong>Lluvia <span>Aburrá</span></strong><small>Datos AMVA–SIATA · Visor independiente</small></div>
+        </div>
+        <div class="topbar-right">
+            <span class="source-chip"><span class="source-dot"></span>Fuentes oficiales SIATA</span>
+            <button id="installApp" class="header-button" type="button" hidden>Añadir al inicio</button>
+            <button id="openPanel" class="header-button mobile-only" type="button" aria-controls="explorer" aria-expanded="false">Capas</button>
+            <a href="https://siata.gov.co/portalWeb" target="_blank" rel="noopener noreferrer">siata.gov.co ↗</a>
+        </div>
+    </header>
+
+    <div class="workspace">
+        <button id="panelBackdrop" class="panel-backdrop" type="button" aria-label="Cerrar panel"></button>
+        <aside id="explorer" class="sidebar" aria-label="Explorador de datos">
+            <div class="panel-heading mobile-only"><strong>Explorar el mapa</strong><button id="closePanel" type="button" aria-label="Cerrar panel">×</button></div>
+            <div class="sidebar-intro">
+                <p class="eyebrow">REDES DE MONITOREO</p>
+                <h1>Mapa de lluvia</h1>
+                <p>Observa el radar de lluvia y el pronóstico por zonas de SIATA. Selecciona una estación para consultar su histórico.</p>
+            </div>
+            <section class="rain-panel" aria-label="Mapa temático de lluvia">
+                <div class="section-title"><span>Lluvia y pronóstico</span><span>SIATA</span></div>
+                <div class="weather-switch" role="group" aria-label="Vista de lluvia">
+                    <button id="radarMode" class="active" type="button" aria-pressed="true">Radar actual</button>
+                    <button id="forecastMode" type="button" aria-pressed="false">Probabilidad</button>
+                </div>
+                <div id="forecastControls" class="forecast-controls" hidden>
+                    <label>Fecha <select id="forecastDate" aria-label="Fecha del pronóstico"></select></label>
+                    <label>Periodo <select id="forecastPeriod" aria-label="Periodo del pronóstico"><option value="madrugada">Madrugada</option><option value="mañana">Mañana</option><option value="tarde">Tarde</option><option value="noche">Noche</option></select></label>
+                </div>
+                <p id="weatherInfo" class="weather-info">Consultando productos operativos de SIATA…</p>
+                <div id="weatherLegend" class="weather-legend"></div>
+                <div id="weatherZones" class="weather-zones" hidden></div>
+            </section>
+            <div class="place-picker">
+                <label for="placeSelect">Comuna o corregimiento de Medellín</label>
+                <select id="placeSelect"><option value="">Todo el Valle de Aburrá</option></select>
+                <p>Toca el mapa para consultar el pronóstico del lugar y sus estaciones cercanas.</p>
+            </div>
+            <div class="search-wrap">
+                <span aria-hidden="true">⌕</span>
+                <input id="search" type="search" placeholder="Buscar estación o municipio" aria-label="Buscar estación o municipio">
+            </div>
+            <div class="section-title"><span>Redes de estaciones</span><span id="categoryCount">—</span></div>
+            <div id="categories" class="categories" aria-label="Filtrar por red"></div>
+            <div class="section-title list-title"><span id="resultTitle">Estaciones</span><span id="resultCount">—</span></div>
+            <div id="stationList" class="station-list"><div class="list-message">Cargando catálogo de SIATA…</div></div>
+            <div class="sidebar-footer">
+                <strong>Fuente directa</strong>
+                <span>Datos originales: AMVA–SIATA, <a href="https://siata.gov.co/portalWeb" target="_blank" rel="noopener noreferrer">siata.gov.co</a> y <a href="https://datos.siata.gov.co/" target="_blank" rel="noopener noreferrer">datos.siata.gov.co</a>. Visualización independiente. <a href="https://datos.siata.gov.co/dataset.xhtml?persistentId=doi%3A10.83041%2F1CJGDM" target="_blank" rel="noopener noreferrer">Términos de uso</a>.</span>
+                <button id="installHelp" class="source-link" type="button">Usar como app en el celular</button>
+            </div>
+        </aside>
+
+        <main class="map-area" aria-label="Mapa de lluvia, pronóstico y estaciones SIATA">
+            <div id="map"></div>
+            <div class="map-toolbar">
+                <div class="map-status"><span class="pulse"></span><span id="statusText">Conectando con SIATA…</span></div>
+                <button id="refresh" class="toolbar-button" type="button" title="Actualizar datos desde SIATA">↻ <span>Actualizar</span></button>
+                <button id="homeView" class="toolbar-button" type="button" title="Ver todo el Valle de Aburrá" aria-label="Ver todo el Valle de Aburrá">⌂</button>
+            </div>
+            <button id="weatherSummary" class="weather-summary" type="button">Consultando lluvia…</button>
+            <div class="map-bottom">
+                <div class="map-caption"><strong id="mapCount">—</strong> estaciones visibles <span>·</span> <span id="liveCount">Consultando lecturas</span></div>
+                <div id="coordinates" class="coordinates">Lat — · Lon —</div>
+            </div>
+        </main>
+
+        <aside id="detail" class="detail" aria-label="Información de la estación" hidden></aside>
+    </div>
+    <nav class="mobile-nav" aria-label="Vistas del geovisor">
+        <button id="mobileRadar" class="active" type="button" aria-pressed="true">Radar</button>
+        <button id="mobileForecast" type="button" aria-pressed="false">Pronóstico</button>
+        <button id="mobileStations" type="button" aria-pressed="false">Estaciones</button>
+    </nav>
+    <div id="networkNotice" class="connection-notice" role="status" hidden></div>
+    <button id="appUpdate" class="app-update" type="button" hidden>Hay una nueva versión · Actualizar</button>
+    <dialog id="installDialog" class="install-dialog">
+        <h2>Abrir como app</h2>
+        <p>En Android, abre el menú del navegador y elige <strong>Instalar aplicación</strong> o <strong>Añadir a pantalla de inicio</strong>.</p>
+        <p>En iPhone, abre el enlace en Safari, toca <strong>Compartir</strong> y elige <strong>Añadir a pantalla de inicio</strong>.</p>
+        <p>También puedes usar el geovisor directamente desde el enlace.</p>
+        <form method="dialog"><button type="submit">Entendido</button></form>
+    </dialog>
+    <script src="vendor/leaflet/leaflet.js"></script>
+    <script src="coverage.js?v=11"></script>
+    <script src="scripts.js?v=11"></script>
+    <script src="pwa.js?v=11"></script>
+</body>
+</html>
