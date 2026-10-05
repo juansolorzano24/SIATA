@@ -69,6 +69,7 @@ let radarData = null;
 let forecastData = null;
 let radarRenderToken = 0;
 let radarImageStamp = null;
+let radarLegendVisible = false;
 let observationsFailed = false;
 let observationsLoaded = false;
 let selectedPlace = null;
@@ -334,8 +335,19 @@ function syncSelectedMarker() {
 }
 
 function syncRadarLegend() {
-  document.getElementById('radarLegend').hidden = !map.hasLayer(radarLayer);
+  const active = map.hasLayer(radarLayer);
+  document.getElementById('radarLegendControl').hidden = !active;
+  document.getElementById('radarLegend').hidden = !active || !radarLegendVisible;
+  document.getElementById('toggleRadarLegend').setAttribute('aria-expanded', String(active && radarLegendVisible));
+  document.getElementById('radarLegendLabel').textContent = radarLegendVisible ? 'Ocultar leyenda' : 'Mostrar leyenda';
+  document.getElementById('radarLegendSymbol').textContent = radarLegendVisible ? '−' : '+';
 }
+
+document.getElementById('toggleRadarLegend').addEventListener('click', function () {
+  radarLegendVisible = !radarLegendVisible;
+  if (!radarLegendVisible) document.querySelector('.radar-legend-details').open = false;
+  syncRadarLegend();
+});
 
 function setWeatherMode(mode) {
   weatherMode = mode;

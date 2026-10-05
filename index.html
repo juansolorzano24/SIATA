@@ -12,7 +12,7 @@
     <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
     <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-    <link rel="stylesheet" href="styles.css?v=13">
+    <link rel="stylesheet" href="styles.css?v=14">
 </head>
 <body>
     <header class="topbar">
@@ -80,8 +80,10 @@
                 <button id="homeView" class="toolbar-button" type="button" title="Ver todo el Valle de Aburrá" aria-label="Ver todo el Valle de Aburrá">⌂</button>
             </div>
             <button id="weatherSummary" class="weather-summary" type="button">Consultando lluvia…</button>
-            <section id="radarLegend" class="radar-legend" aria-label="Leyenda del radar de lluvia SIATA">
-                <div class="radar-legend-title"><strong>Radar de lluvia SIATA</strong><span>Reflectividad · dBZ</span></div>
+            <div id="radarLegendControl" class="radar-legend-control">
+                <button id="toggleRadarLegend" class="radar-legend-toggle" type="button" aria-expanded="false" aria-controls="radarLegend"><i aria-hidden="true"></i><span id="radarLegendLabel">Mostrar leyenda</span><span id="radarLegendSymbol" aria-hidden="true">+</span></button>
+            <section id="radarLegend" class="radar-legend" aria-label="Leyenda del radar de lluvia SIATA" hidden>
+                <div class="radar-legend-title">Reflectividad del radar · dBZ</div>
                 <div class="radar-color-scale" role="img" aria-label="Paleta de reflectividad: celeste, azul, verde, amarillo, naranja, rojo, morado, rosado y blanco; de 0 a 80 dBZ"></div>
                 <div class="radar-scale-ticks" aria-hidden="true"><span>0</span><span>20</span><span>40</span><span>60</span><span>80</span></div>
                 <div class="radar-scale-classes"><span>Baja</span><span>Moderada</span><span>Alta</span><span>Muy alta</span></div>
@@ -97,6 +99,7 @@
                     <a href="https://siata.gov.co/siata_nuevo/application/assets/images/AreaMetropolitanaRadar_DBZH.png?v=0.0.1" target="_blank" rel="noopener noreferrer">Ver leyenda oficial de SIATA ↗</a>
                 </details>
             </section>
+            </div>
             <div class="map-bottom">
                 <div class="map-caption"><strong id="mapCount">—</strong> estaciones visibles <span>·</span> <span id="liveCount">Consultando lecturas</span></div>
                 <div id="coordinates" class="coordinates">Lat — · Lon —</div>
@@ -120,8 +123,8 @@
         <form method="dialog"><button type="submit">Entendido</button></form>
     </dialog>
     <script src="vendor/leaflet/leaflet.js"></script>
-    <script src="coverage.js?v=13"></script>
-    <script src="scripts.js?v=13"></script>
-    <script src="pwa.js?v=13"></script>
+    <script src="coverage.js?v=14"></script>
+    <script src="scripts.js?v=14"></script>
+    <script src="pwa.js?v=14"></script>
 </body>
 </html>

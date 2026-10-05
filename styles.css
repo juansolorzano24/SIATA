@@ -52,11 +52,15 @@ h1 { margin: 0; font-size: 23px; line-height: 1.15; letter-spacing: -.025em; }
 .legend-item { display: inline-flex; align-items: center; gap: 4px; color: #587383; font-size: 10px; }
 .legend-swatch { width: 11px; height: 11px; border-radius: 3px; background: var(--swatch); border: 1px solid #29485c30; }
 .layers-hint { margin: -3px 22px 12px; color: var(--muted); font-size: 11px; line-height: 1.5; }
-.radar-legend { position: absolute; z-index: 450; left: 18px; bottom: 74px; width: 304px; max-width: calc(100% - 36px); padding: 12px 14px 6px; border: 1px solid #d6e3e9; border-radius: 10px; background: #fff; box-shadow: 0 3px 16px #09283e22; color: #315469; }
-.radar-legend-title { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 3px 8px; font-size: 11px; margin-bottom: 9px; }
-.radar-legend-title span { color: #607586; font-size: 10px; }
+.radar-legend-control { position: absolute; z-index: 450; left: 18px; bottom: 74px; max-width: calc(100% - 36px); border: 1px solid #d6e3e9; border-radius: 8px; background: #fff; box-shadow: 0 3px 16px #09283e22; color: #315469; }
+.radar-legend-toggle { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 36px; padding: 7px 10px; border: 0; border-radius: 8px; background: #fff; color: #23536a; font-size: 11px; font-weight: 600; }
+.radar-legend-toggle:hover { background: #edf7fa; }
+.radar-legend-toggle i { width: 19px; height: 9px; border-radius: 2px; background: linear-gradient(to right, #0c51f4, #54d32e, #fde139, #f40801, #de68ca); }
+.radar-legend-toggle > span:last-child { margin-left: auto; font-size: 16px; line-height: 1; }
+.radar-legend { width: 248px; max-width: 100%; padding: 0 10px 3px; max-height: min(42vh, 340px); overflow-y: auto; }
+.radar-legend-title { color: #607586; font-size: 10px; margin-bottom: 6px; }
 /* Paleta y rangos verificados en la leyenda oficial AreaMetropolitanaRadar_DBZH.png. */
-.radar-color-scale { height: 13px; border: 1px solid #29485c40; border-radius: 3px; background: linear-gradient(to right, #e5ffff 0%, #0c51f4 6.25%, #383da9 12.5%, #3c8249 18.75%, #54d32e 25%, #b5eb3d 31.25%, #fde139 37.5%, #fd7c02 43.75%, #f93e0b 50%, #f40801 56.25%, #c11100 62.5%, #a50b60 68.75%, #bb23b1 75%, #de68ca 81.25%, #f09ddc 87.5%, #f9cfec 93.75%, #fffcfe 100%); }
+.radar-color-scale { height: 11px; border: 1px solid #29485c40; border-radius: 3px; background: linear-gradient(to right, #e5ffff 0%, #0c51f4 6.25%, #383da9 12.5%, #3c8249 18.75%, #54d32e 25%, #b5eb3d 31.25%, #fde139 37.5%, #fd7c02 43.75%, #f93e0b 50%, #f40801 56.25%, #c11100 62.5%, #a50b60 68.75%, #bb23b1 75%, #de68ca 81.25%, #f09ddc 87.5%, #f9cfec 93.75%, #fffcfe 100%); }
 .radar-scale-ticks { display: flex; justify-content: space-between; font-size: 10px; margin-top: 3px; }
 .radar-scale-classes { display: grid; grid-template-columns: repeat(4, 1fr); text-align: center; font-size: 10px; margin: 3px 0 2px; }
 .radar-legend-details { font-size: 11px; line-height: 1.45; }
@@ -216,7 +220,9 @@ h1 { margin: 0; font-size: 23px; line-height: 1.15; letter-spacing: -.025em; }
     .leaflet-control-layers-expanded label { padding: 7px 0; min-height: 40px; }
     .leaflet-control-attribution { max-width: 100%; font-size: 8px !important; }
     .map-bottom { left: 10px; right: 10px; bottom: 25px; }
-    .radar-legend { left: 10px; bottom: 69px; width: 290px; max-width: calc(100% - 20px); padding: 10px 12px 2px; max-height: calc(100% - 190px); overflow-y: auto; }
+    .radar-legend-control { left: 10px; bottom: 69px; max-width: calc(100% - 20px); }
+    .radar-legend-toggle { min-height: 44px; }
+    .radar-legend { width: 236px; max-height: min(38vh, 300px); padding: 0 9px 2px; }
     .radar-legend-details summary { min-height: 44px; }
     .map-caption { padding: 7px 9px; font-size: 10px; }
     .coordinates { display: none; }
