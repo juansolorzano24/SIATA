@@ -30,6 +30,10 @@ OPERATIONAL = "https://siata.gov.co"
 GEOPORTAL = "https://geoportal.siata.gov.co"
 RADAR_DIRECTORY = "/data/radar/10_DBZH/"
 RADAR_BOUNDS = [[5.1, -76.6], [7.3, -74.3]]  # KML oficial: /kml/00_Radar/Ultimo_Barrido/AreaMetropolitanaRadar_10_120_DBZH.kml
+RADAR_PRODUCTS = (
+    ("10_DBZH", RADAR_BOUNDS, "AreaMetropolitanaRadar_10_120_DBZH.kml"),
+    ("05_DBZH", [[4.2, -77.67], [8.3, -73.34]], "AreaMetropolitanaRadar_05_240_DBZH.kml"),
+)
 FORECAST_ZONES = {
     "Medellín Centro": "wrfmedCentro", "Medellín Oriente": "wrfmedOriente",
     "Medellín Occidente": "wrfmedOccidente", "Palmitas": "wrfpalmitas",
@@ -84,52 +88,83 @@ def read_url(path, params=None, limit=MAX_DOWNLOAD):
     return content
 
 
-def read_operational(base, path, limit=MAX_DOWNLOAD):
+def read_operational(base, path, limit=MAX_DOWNLOAD, timeout=25):
     request = Request(base + path, headers={"User-Agent": "SIATA-geovisor-academico/1.0"})
-    with urlopen(request, timeout=25) as response:
+    with urlopen(request, timeout=timeout) as response:
         content = response.read(limit + 1)
     if len(content) > limit:
         raise ValueError("El producto de SIATA supera el tamaño permitido")
     return content
 
 
+def radar_candidate(product, now):
+    """Consultar un producto oficial sin confundir la descarga con el barrido."""
+    name, bounds, kml = product
+    for day in (now, now - timedelta(days=1)):
+        folder = day.strftime("%Y%m%d")
+        directory = "/data/radar/" + name + "/" + folder + "/"
+        try:
+            listing = read_operational(OPERATIONAL, directory, limit=3 * 1024 * 1024, timeout=8)
+        except HTTPError as exc:
+            if exc.code == 404:
+                continue
+            raise
+        candidates = []
+        for stamp in set(re.findall(rb"href=[\"'](\d{12})\.png[\"']", listing)):
+            try:
+                timestamp = datetime.strptime(stamp.decode("ascii"), "%Y%m%d%H%M").replace(tzinfo=timezone.utc)
+            except ValueError:
+                continue
+            if timestamp <= now + timedelta(minutes=2):
+                candidates.append((timestamp, directory + stamp.decode("ascii") + ".png"))
+        if candidates:
+            timestamp, image_path = max(candidates)
+            return {"timestamp": timestamp, "image_path": image_path, "bounds": bounds,
+                    "bounds_source": OPERATIONAL + "/kml/00_Radar/Ultimo_Barrido/" + kml,
+                    "product": name}
+    return None
+
+
 def get_radar(force=False):
-    """Último barrido publicado, limitado a 30 minutos de antigüedad."""
+    """Preferir el barrido original; usar 0,5° si aquel falla o está desactualizado."""
     with radar_lock:
         now = datetime.now(timezone.utc)
         if radar_cache.get("checked_at") and (now - radar_cache["checked_at"]).total_seconds() < (15 if force else 120):
             return radar_cache["metadata"]
-        image_name = None
-        for day in (now, now - timedelta(days=1)):
-            folder = day.strftime("%Y%m%d")
+        selected = None
+        failures = []
+        for product in RADAR_PRODUCTS:
             try:
-                listing = read_operational(OPERATIONAL, RADAR_DIRECTORY + folder + "/", limit=3 * 1024 * 1024)
-            except HTTPError as exc:
-                if exc.code == 404:
-                    continue
-                raise
-            names = set(re.findall(rb'href="(\d{12})\.png"', listing))
-            candidates = []
-            for name in names:
-                timestamp = datetime.strptime(name.decode("ascii"), "%Y%m%d%H%M").replace(tzinfo=timezone.utc)
-                if timestamp <= now + timedelta(minutes=2):
-                    candidates.append((timestamp, folder + "/" + name.decode("ascii") + ".png"))
-            if candidates:
-                timestamp, image_name = max(candidates)
+                candidate = radar_candidate(product, now)
+            except (OSError, ValueError) as exc:
+                failures.append(exc)
+                print("Producto de radar SIATA:", product[0], repr(exc), file=sys.stderr)
+                continue
+            if candidate is None:
+                continue
+            if selected is None or candidate["timestamp"] > selected["timestamp"]:
+                selected = candidate
+            if now - candidate["timestamp"] <= timedelta(minutes=30):
+                selected = candidate
                 break
-        available = bool(image_name and now - timestamp <= timedelta(minutes=30))
+        if selected is None and len(failures) == len(RADAR_PRODUCTS):
+            raise failures[0]
+        timestamp = selected["timestamp"] if selected else None
+        image_path = selected["image_path"] if selected else None
+        available = bool(selected and now - timestamp <= timedelta(minutes=30))
         metadata = {
             "available": available,
-            "observed_at": timestamp.isoformat() if image_name else None,
-            "age_minutes": round((now - timestamp).total_seconds() / 60) if image_name else None,
-            "bounds": RADAR_BOUNDS,
-            "bounds_source": OPERATIONAL + "/kml/00_Radar/Ultimo_Barrido/AreaMetropolitanaRadar_10_120_DBZH.kml",
-            "source": OPERATIONAL + RADAR_DIRECTORY + image_name if image_name else None,
+            "observed_at": timestamp.isoformat() if selected else None,
+            "age_minutes": round((now - timestamp).total_seconds() / 60) if selected else None,
+            "bounds": selected["bounds"] if selected else RADAR_BOUNDS,
+            "bounds_source": selected["bounds_source"] if selected else OPERATIONAL + "/kml/00_Radar/Ultimo_Barrido/AreaMetropolitanaRadar_10_120_DBZH.kml",
+            "source": OPERATIONAL + image_path if selected else None,
             "image": "/api/radar/image" if available else None,
+            "product": selected["product"] if selected else None,
         }
-        if radar_cache.get("image_name") != image_name:
+        if radar_cache.get("image_path") != image_path:
             radar_cache.pop("image", None)
-        radar_cache.update(checked_at=now, metadata=metadata, image_name=image_name)
+        radar_cache.update(checked_at=now, metadata=metadata, image_path=image_path)
         return metadata
 
 
@@ -141,8 +176,10 @@ def get_radar_image(expected_stamp=None):
         raise ValueError("El barrido cambió. Actualiza la consulta de radar.")
     with radar_lock:
         if "image" not in radar_cache:
-            radar_cache["image"] = read_operational(
-                OPERATIONAL, RADAR_DIRECTORY + radar_cache["image_name"], limit=3 * 1024 * 1024)
+            image = read_operational(OPERATIONAL, radar_cache["image_path"], limit=3 * 1024 * 1024, timeout=8)
+            if not image.startswith(b"\x89PNG\r\n\x1a\n"):
+                raise ValueError("La fuente de radar SIATA no entregó una imagen PNG")
+            radar_cache["image"] = image
         return radar_cache["image"]
 
 
