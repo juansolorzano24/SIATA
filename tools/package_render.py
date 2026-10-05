@@ -11,12 +11,12 @@ FOLDER = ROOT / "publicar-render"
 ARCHIVE = ROOT / "dist" / "lluvia-aburra-render.zip"
 FILES = [
     ".gitignore", ".dockerignore", ".python-version", "render.yaml", "requirements.txt",
-    "serve.py", "server.py", "wsgi.py", "Dockerfile", "Procfile", "README.md", "PUBLICACION.md",
-    "index.html", "scripts.js", "styles.css", "coverage.js", "pwa.js", "manifest.webmanifest",
+    "serve.py", "server.py", "wsgi.py", "analytics.py", "Dockerfile", "Procfile", "README.md", "PUBLICACION.md", "ESTADISTICAS.md",
+    "index.html", "scripts.js", "styles.css", "coverage.js", "pwa.js", "analytics.js", "manifest.webmanifest",
     "service-worker.js", "data/siata_catalog.json", "data/forecast_zones.geojson",
     "data/medellin_sectors.geojson", "tools/package_render.py",
     "tools/import_siata_geography.py", "tools/create_icons.py", "tools/vendor_leaflet.py",
-    "tests/test_data.py", "tests/coverage.test.js", "tests/pwa.test.js",
+    "tests/test_data.py", "tests/test_analytics.py", "tests/analytics.test.js", "tests/coverage.test.js", "tests/pwa.test.js",
 ]
 
 
